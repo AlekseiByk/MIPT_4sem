@@ -1,2 +1,2 @@
 all:
-	gcc -Wall main.c -o prog
+	gcc -Wall main.c -o prog -pthread
