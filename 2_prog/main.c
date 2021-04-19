@@ -23,10 +23,10 @@ const double step = 1./100000000;
 
 struct mission_t
 {
-	double step;
 	double a;
 	double b;
 	double result;
+	int proc_number;
 };
 
 int takenumber (char * str);
@@ -63,7 +63,6 @@ int main(int argc, char *argv[])
 
 	fscanf(fin, "%d", &cache_size);
 
-	cpu_set_t cpuset;
 	pthread_t * threads = (pthread_t *) calloc ( MAX( number_of_proc, input), sizeof(threads[0]));
 	struct mission_t ** pthreads_info = (struct mission_t **) calloc ( MAX( number_of_proc, input), sizeof(pthreads_info[0])); 
 
@@ -72,7 +71,7 @@ int main(int argc, char *argv[])
 		pthreads_info[i] = (struct mission_t *) memalign (cache_size, sizeof(struct mission_t) );
 		pthreads_info[i] -> a = left_lim + ((double) (right_lim - left_lim)) / input * (i % input);
 		pthreads_info[i] -> b = (pthreads_info[i] -> a) + ((double) (right_lim - left_lim)) / input;
-		pthreads_info[i] -> step = step;
+		pthreads_info[i] -> proc_number = i % number_of_proc;
 		pthreads_info[i] -> result = 0;
 		//printf ("%f %f %10f %f\n", pthreads_info[i] -> a, pthreads_info[i] -> b, pthreads_info[i] -> step, pthreads_info[i] -> result);
 	}
@@ -87,11 +86,7 @@ int main(int argc, char *argv[])
 
 	for (int i = 0; i < MAX( number_of_proc, input); i++){
 
-		CPU_ZERO(&cpuset);
-		CPU_SET(i % number_of_proc, &cpuset);
-
-		err = pthread_setaffinity_np(threads[i], sizeof(cpuset), &cpuset);
-		check_error(err, "pthread_setaffinity_np");
+		
 	}
 
 	for (int i = 0; i < MAX( number_of_proc, input); i++){
@@ -137,11 +132,20 @@ int takenumber (char * str)
 void *pthread_function(void * arg)
 {
 	struct mission_t * mission = (struct mission_t * ) arg;
-	double x = mission -> a;
 
-	while ( x < mission -> b ){
-		mission-> result += func( x ) * (mission -> step);
-		x += (mission -> step);
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(mission -> proc_number, &cpuset);
+
+	int err = pthread_setaffinity_np( pthread_self(), sizeof(cpuset), &cpuset);
+	check_error(err, "pthread_setaffinity_np");
+
+	double x = mission -> a;
+	double end = mission -> b;
+
+	while ( x < end ){
+		mission-> result += func( x ) * step;
+		x += step;
 	}
  
 	return 0;
