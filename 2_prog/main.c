@@ -6,13 +6,32 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/sysinfo.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <math.h>
+#include <malloc.h>
 
 #define check_error(er, msg) \
-		do { if (er != 0) { errno = er; perror(msg); exit(EXIT_FAILURE); } } while (0)
+		do { if (er != 0) { errno = er; perror(msg);printf ("%d\n", er); exit(EXIT_FAILURE); } } while (0)
+#define MAX(first, second) \
+		((first > second)? first : second)
 
-void pthread_function(void * arg);
+const double left_lim = 0;
+const double right_lim = 10;
+const double step = 1./500000000;
+
+struct mission_t
+{
+	double step;
+	double a;
+	double b;
+	double result;
+};
+
+int takenumber (char * str);
+void *pthread_function(void * arg);
+double func(double x);
 
 int main(int argc, char *argv[])
 {
@@ -30,53 +49,89 @@ int main(int argc, char *argv[])
 
 	int err = 0;
 	int number_of_proc = get_nprocs_conf();
-	int * processors = (int *) calloc (number_of_proc, sizeof(processors[0]));
-
+//	int number_of_cores = 0;
+//	char * file_pass = (char *) calloc (sizeof("/sys/devices/system/cpu/cpu0/cache/index0") + number_of_proc, sizeof(file_pass[0]));
+//	int * processors = (int *) calloc (number_of_proc, sizeof(processors[0]));
+/*
 	for (int i = 0; i < number_of_proc; i++){
 
-		struct stat statbuf = {};
-		char file_pass[] = sprintf(file_pass, "/sys/devices/system/cpu/cpu%d/topology/core_id", i);
+		sprintf(file_pass, "/sys/devices/system/cpu/cpu%d/topology/core_id", i);
 		int fd = open (file_pass, O_RDONLY);
+		check_error (fd, "error while open /cpu&/");
+
+		struct stat statbuf = {};
 		fstat(fd, &statbuf);
 
 		char * buf = (char *) calloc (statbuf.st_size, sizeof(buf[0]));
 		read (fd, buf, statbuf.st_size);
 
 		processors[i] = atoi(buf);
+		if (number_of_cores < processors[i])
+			number_of_cores = processors[i];
+
 		free(buf);
 		close(fd);
 		printf ("%d %d\n", i, processors[i]);
 	}
-	/*
+*/
 	//----------------------------------------------------------------------------
-	cpu_set_t cpuset;
-	pthread_t * threads = (pthread_t *) calloc (number_of_proc, sizeof(threads[0]));
 
-	for (int i = 0; i < input; i++){
-		err = pthread_create(&(threads[i]), NULL, pthread_function,(void*) &pthread_info[i]);
+	FILE* fin = fopen ("/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size", "r");
+	if (!fin)
+		fprintf(stderr, "error while fopen cache file\n");
+
+	int cache_size = 0;
+
+	fscanf(fin, "%d", &cache_size);
+
+	cpu_set_t cpuset;
+	pthread_t * threads = (pthread_t *) calloc (MAX( number_of_proc, input), sizeof(threads[0]));
+	struct mission_t ** pthreads_info = (struct mission_t **) calloc (MAX( number_of_proc, input), sizeof(pthreads_info[0])); 
+
+	for (int i = 0; i < MAX( number_of_proc, input); i++){
+
+		pthreads_info[i] = (struct mission_t *) memalign (cache_size, sizeof(struct mission_t) );
+		pthreads_info[i] -> a = left_lim + ((double) (right_lim - left_lim)) / input * (i % input);
+		pthreads_info[i] -> b = (pthreads_info[i] -> a) + ((double) (right_lim - left_lim)) / input;
+		pthreads_info[i] -> step = step;
+		pthreads_info[i] -> result = 0;
+		//printf ("%f %f %10f %f\n", pthreads_info[i] -> a, pthreads_info[i] -> b, pthreads_info[i] -> step, pthreads_info[i] -> result);
+	}
+
+
+
+	for (int i = 0; i < MAX( number_of_proc, input) ; i++){
+
+		err = pthread_create(&(threads[i]), NULL, pthread_function,(void*) pthreads_info[i]);
 		check_error(err, "pthread_create");
 	}
 
-	for (int i = 0; i < input; i++){
+	for (int i = 0; i < MAX( number_of_proc, input); i++){
+
 		CPU_ZERO(&cpuset);
-		CPU_SET(2, &cpuset);
+		CPU_SET(i % number_of_proc, &cpuset);
 
 		err = pthread_setaffinity_np(threads[i], sizeof(cpuset), &cpuset);
 		check_error(err, "pthread_setaffinity_np");
 	}
 
-	for (int i = 0; i < input; i++){
+	for (int i = 0; i < MAX( number_of_proc, input); i++){
+
 		pthread_join(threads[i], NULL);
 		check_error(err, "pthread_join");
 	}
-	
 
-	CPU_ZERO(&cpuset);
-	//for (int j = 0; j < 8; j++)
-		CPU_SET(2, &cpuset);
+	double result = 0;
 
-	free (threads);*/
-	free (processors);
+
+	for (int i = 0; i < input; i++){
+		result += pthreads_info[i] -> result;
+	}
+	printf("res: %f\n", result);
+
+	free (threads);
+//	free (processors);
+//	free(file_pass);
 	exit (EXIT_SUCCESS);
 }
 
@@ -105,54 +160,21 @@ int takenumber (char * str)
 
 	return input;
 }
-/*
-#include "errno.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <pthread.h>
-
-void *incriment(void * arg);
-int takenumber (char * input);
- 
-int main(int argc, char **argv) {
-
-	// Check argument's amount
-	if (argc < 2) {
-		printf("Too less arguments\n");
-		return -1;
-	} else if (argc > 2) {
-		printf("Too many arguments\n");
-		return -2;
-	}
-
-	int input = takenumber (argv[1]);
-	//-------------------------------------------------------------------------------------input
-
-	int var = 0;
-	pthread_t thread[input];
-
-	for (int i = 0; i < input; i++)
-		pthread_create(&(thread[i]), NULL, incriment,(void*) &var);
-	for (int i = 0; i < input; i++)
-		pthread_join(thread[i], NULL);
-	
-	printf ("%d\n", var);
-
-	return 0;
-}
-
-
-
-void *incriment(void * arg)
+void *pthread_function(void * arg)
 {
-	int * variable = (int *) arg;
-	
-	for (int i =0; i < 10000; i++)
-		*variable += 1;
+	struct mission_t * mission = (struct mission_t * ) arg;
+	double x = mission -> a;
 
+	while ( x < mission -> b ){
+		mission-> result += func( x ) * (mission -> step);
+		x += (mission -> step);
+	}
+ 
 	return 0;
 }
 
-*/
+double func(double x)
+{
+	return x * x;
+}
