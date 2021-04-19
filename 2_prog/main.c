@@ -19,7 +19,7 @@
 
 const double left_lim = 0;
 const double right_lim = 10;
-const double step = 1./500000000;
+const double step = 1./100000000;
 
 struct mission_t
 {
@@ -45,36 +45,15 @@ int main(int argc, char *argv[])
 	}
 
 	int input = takenumber (argv[1]);
+
+	if (input <= 0) {
+		printf("The number must be greater then 0\n");
+		exit(-4);
+	}
 	//----------------------------------------------------------------------------input
 
 	int err = 0;
-	int number_of_proc = get_nprocs_conf();
-//	int number_of_cores = 0;
-//	char * file_pass = (char *) calloc (sizeof("/sys/devices/system/cpu/cpu0/cache/index0") + number_of_proc, sizeof(file_pass[0]));
-//	int * processors = (int *) calloc (number_of_proc, sizeof(processors[0]));
-/*
-	for (int i = 0; i < number_of_proc; i++){
-
-		sprintf(file_pass, "/sys/devices/system/cpu/cpu%d/topology/core_id", i);
-		int fd = open (file_pass, O_RDONLY);
-		check_error (fd, "error while open /cpu&/");
-
-		struct stat statbuf = {};
-		fstat(fd, &statbuf);
-
-		char * buf = (char *) calloc (statbuf.st_size, sizeof(buf[0]));
-		read (fd, buf, statbuf.st_size);
-
-		processors[i] = atoi(buf);
-		if (number_of_cores < processors[i])
-			number_of_cores = processors[i];
-
-		free(buf);
-		close(fd);
-		printf ("%d %d\n", i, processors[i]);
-	}
-*/
-	//----------------------------------------------------------------------------
+	int number_of_proc = get_nprocs();
 
 	FILE* fin = fopen ("/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size", "r");
 	if (!fin)
@@ -85,8 +64,8 @@ int main(int argc, char *argv[])
 	fscanf(fin, "%d", &cache_size);
 
 	cpu_set_t cpuset;
-	pthread_t * threads = (pthread_t *) calloc (MAX( number_of_proc, input), sizeof(threads[0]));
-	struct mission_t ** pthreads_info = (struct mission_t **) calloc (MAX( number_of_proc, input), sizeof(pthreads_info[0])); 
+	pthread_t * threads = (pthread_t *) calloc ( MAX( number_of_proc, input), sizeof(threads[0]));
+	struct mission_t ** pthreads_info = (struct mission_t **) calloc ( MAX( number_of_proc, input), sizeof(pthreads_info[0])); 
 
 	for (int i = 0; i < MAX( number_of_proc, input); i++){
 
@@ -127,11 +106,10 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < input; i++){
 		result += pthreads_info[i] -> result;
 	}
-	printf("res: %f\n", result);
+
+	printf("res: %f\n", result * result * 4);
 
 	free (threads);
-//	free (processors);
-//	free(file_pass);
 	exit (EXIT_SUCCESS);
 }
 
@@ -146,11 +124,6 @@ int takenumber (char * str)
 	if (endptr == strptr || *endptr != '\0') {
 		printf("Wront input string\n");
 		exit (-3);
-	}
- 
-	if (input <= 0) {
-		printf("The number must be greater then 0\n");
-		exit(-4);
 	}
  
 	if (errno == ERANGE && (input == LONG_MAX || input == LONG_MIN)) {
@@ -176,5 +149,5 @@ void *pthread_function(void * arg)
 
 double func(double x)
 {
-	return x * x;
+	return exp (-x * x);
 }
