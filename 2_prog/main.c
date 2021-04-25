@@ -15,7 +15,7 @@
 #define check_error(er, msg) \
 		do { if (er != 0) { errno = er; perror(msg);printf ("%d\n", er); exit(EXIT_FAILURE); } } while (0)
 #define MAX(first, second) \
-		((first > second)? first : second)
+		((first > second)? first : second) 
 
 const double left_lim = 0;
 const double right_lim = 10;
@@ -86,24 +86,21 @@ int main(int argc, char *argv[])
 
 	for (int i = 0; i < MAX( number_of_proc, input); i++){
 
-		
-	}
-
-	for (int i = 0; i < MAX( number_of_proc, input); i++){
-
 		pthread_join(threads[i], NULL);
 		check_error(err, "pthread_join");
 	}
 
 	double result = 0;
 
-
-	for (int i = 0; i < input; i++){
+	for (int i = 0; i < input; i++)
 		result += pthreads_info[i] -> result;
+
+	printf("res: %.10f\n", result * result * 4);
+
+	for (int i = 0; i < MAX( number_of_proc, input); i++){
+		free(pthreads_info[i]);
 	}
-
-	printf("res: %f\n", result * result * 4);
-
+	free(pthreads_info);
 	free (threads);
 	exit (EXIT_SUCCESS);
 }
