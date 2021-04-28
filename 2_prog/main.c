@@ -18,7 +18,7 @@
 		((first > second)? first : second) 
 
 const double left_lim = 0;
-const double right_lim = 10;
+const double right_lim = 8;
 const double step = 1./100000000;
 
 struct mission_t
@@ -55,6 +55,8 @@ int main(int argc, char *argv[])
 	int err = 0;
 	int number_of_proc = get_nprocs();
 
+	printf ("number of CPUs : %d\n", number_of_proc);
+
 	FILE* fin = fopen ("/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size", "r");
 	if (!fin)
 		fprintf(stderr, "error while fopen cache file\n");
@@ -62,6 +64,8 @@ int main(int argc, char *argv[])
 	int cache_size = 0;
 
 	fscanf(fin, "%d", &cache_size);
+
+	fclose (fin);
 
 	pthread_t * threads = (pthread_t *) calloc ( MAX( number_of_proc, input), sizeof(threads[0]));
 	struct mission_t ** pthreads_info = (struct mission_t **) calloc ( MAX( number_of_proc, input), sizeof(pthreads_info[0])); 
@@ -132,6 +136,7 @@ void *pthread_function(void * arg)
 
 	cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
+
 	CPU_SET(mission -> proc_number, &cpuset);
 
 	int err = pthread_setaffinity_np( pthread_self(), sizeof(cpuset), &cpuset);
