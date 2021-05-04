@@ -1,5 +1,4 @@
 #include "rb-tree.h"
-#include "stdio.h"
 
 int test_num = 0;
 
@@ -7,10 +6,10 @@ int test_num = 0;
 {\
     if(!((what) opera (truth)))\
         printf("%d-FAIL test!!! %s != %s\n", test_num, #what, #truth);\
-    else\
+};
+//  else\
         printf("%d-Test passed\n", test_num);\
         test_num++;\
-};
 
 void Testcase_dump();
 void Testcase_insert_right_fixup();
@@ -53,7 +52,6 @@ void Testcase_memfail()
 
     size_t* fail_nodes = RB_takeNodsNum(NULL);
     UNITTEST(fail_nodes, ==, NULL);
-
 }
 
 void Testcase_tree_ctor_and_dtor()
@@ -61,9 +59,9 @@ void Testcase_tree_ctor_and_dtor()
     rb_tree_t* tree = tree_ctor();
     UNITTEST(tree, !=, NULL);
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 10; i++)
     {
-        int ret_insert = RB_insert(tree, i);
+        int ret_insert = RB_insert(tree, i+1);
         UNITTEST(ret_insert, ==, 0);
     }
 
@@ -97,6 +95,7 @@ void Testcase_tree_ctor_and_dtor()
     UNITTEST(ret_bad_counter_tree_dtor, ==, E_TOO_MUCH_ELEM);
 
     *NodesNum = 2;
+
     ret_tree_dtor = tree_dtor(tree);
     UNITTEST(ret_tree_dtor, ==, 0);
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,9 +217,9 @@ void Testcase_insert_left_fixup()
     UNITTEST(tree, !=, NULL);
 
     int ret_val_RB_insert = 0;
-    int arr_nums[9] = {11, 2, 14, 1, 7, 15, 5, 8, 4};
+    int arr_nums[15] = {11, 2, 14, 1, 7, 15, 5, 8, 4, 20, 9, 3, 25, 22, 21};
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < 15; i++)
     {
         ret_val_RB_insert = RB_insert(tree, arr_nums[i]);
         UNITTEST(ret_val_RB_insert, ==, 0);
@@ -334,6 +333,13 @@ void Testcase_delete_and_fixup()
     int ret_del_right = RB_delete(tree, 11);
     UNITTEST(ret_del_right, ==, 0);
 
+    for (int i = 15; i > 0; i--)
+    {
+        ret_del_right = RB_delete(tree, arr_nums2[i]);
+        UNITTEST(ret_del_right, ==, 0);
+    }
+
+
     ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);
 ////////////////////////////////////////////////////////////////////////////////
@@ -382,7 +388,7 @@ void Testcase_delete_and_fixup()
     UNITTEST(ret_zombie_third_left, ==, 0);
 ////////////////////////////////////////////////////////////////////////////////
 /*    int ret_nil_delete = RB_delete(tree, );
-    UNITTEST(ret_nil_delete, ==, ERROR);*/
+    UNITTEST(ret_nil_delete, ==, ERROR);
 ////////////////////////////////////////////////////////////////////////////////
     rb_node_t* save = tree->root->right->right->left;
     tree->root->right->right->left = NULL;
@@ -397,8 +403,7 @@ void Testcase_delete_and_fixup()
     tree = tree_ctor();
     UNITTEST(tree, !=, NULL);
 
-    rb_node_t* new_root = node_ctor(11);
-    ret_val_RB_insert = RB_insert(tree, new_root);
+    ret_val_RB_insert = RB_insert(tree, 11);
     UNITTEST(ret_val_RB_insert, ==, 0);
 
     tree->root->right = NULL;
@@ -413,11 +418,10 @@ void Testcase_delete_and_fixup()
     int ret_dump_left_delete = tree_dump(out, tree);
     UNITTEST(ret_dump_left_delete, ==, 0);
     fclose(out);
-
+*/
     ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);
 }
-*/
 
 void Testcase_search()
 {
@@ -530,7 +534,22 @@ static int sum(int key, void* data)
         return -1;
 
     *((int*) data) += key;
-    return *((int*) data);
+    return 0;
+}
+
+static int broken_sum(int key, void* data)
+{
+    if (data == NULL)
+        return -1;
+
+    static int count = 0;
+    if (count == 0 || count == 2 || count == 5)
+    {
+        count ++;
+        return -1;
+    }
+    count++;
+    return 0;    
 }
 
 void Testcase_foreach()
@@ -554,6 +573,11 @@ void Testcase_foreach()
         UNITTEST(ret_dump_insert, ==, 0);
     }
 
+    FILE* out_tree = fopen("dump_tree1.dot", "w");
+    int dump_tree = tree_dump(out_tree, tree);
+    UNITTEST(dump_tree, ==, 0);
+    fclose(out_tree);
+
     int ret_sum_foreach = foreach(tree, sum, &tree_sum);
     UNITTEST(ret_sum_foreach, ==, 0);
     UNITTEST(tree_sum, ==, 3);
@@ -566,11 +590,14 @@ void Testcase_foreach()
     UNITTEST(ret_loopcheck_foreach, ==, E_TOO_MUCH_ELEM);
     *NodesNum = 3;
 ////////////////////////////////////////////////////////////////////////////////
-/*    rb_node_t* saved_root = tree->root;
-    tree->root = NULL;
-    int ret_bad_node_foreach = foreach(tree, sum, &tree_sum);
-    UNITTEST(ret_bad_node_foreach, ==, BAD_ARGS);
-    tree->root = saved_root;*/
+    int ret_broken_sum_foreach = foreach(tree, broken_sum, &tree_sum);
+    UNITTEST(ret_broken_sum_foreach, ==, -1);
+
+    ret_broken_sum_foreach = foreach(tree, broken_sum, &tree_sum);
+    UNITTEST(ret_broken_sum_foreach, ==, -1);
+
+    ret_broken_sum_foreach = foreach(tree, broken_sum, &tree_sum);
+    UNITTEST(ret_broken_sum_foreach, ==, -1);
 ////////////////////////////////////////////////////////////////////////////////
     int ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);
