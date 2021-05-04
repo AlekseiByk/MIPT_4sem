@@ -16,7 +16,6 @@ void Testcase_dump();
 void Testcase_insert_right_fixup();
 void Testcase_insert_left_fixup();
 void Testcase_tree_ctor_and_dtor();
-void Testcase_node_ctor_and_dtor();
 void Testcase_delete_and_fixup();
 void Testcase_search();
 void Testcase_max();
@@ -27,7 +26,6 @@ void Testcase_memfail();
 int main()
 {
     Testcase_memfail();
-    Testcase_node_ctor_and_dtor();
     Testcase_tree_ctor_and_dtor();
     Testcase_dump();
     Testcase_insert_left_fixup();
@@ -44,11 +42,6 @@ int main()
 void Testcase_memfail()
 {
     errno = 0;
-    rb_node_t* fail_node = node_ctor(42);
-    UNITTEST(errno, ==, ENOMEM);
-    UNITTEST(fail_node, ==, NULL);
-
-    errno = 0;
     rb_tree_t* fail_tree = tree_ctor();
     UNITTEST(errno, ==, ENOMEM);
     UNITTEST(fail_tree, ==, NULL);
@@ -57,19 +50,10 @@ void Testcase_memfail()
     fail_tree = tree_ctor();
     UNITTEST(errno, ==, ENOMEM);
     UNITTEST(fail_tree, ==, NULL);
-}
 
-void Testcase_node_ctor_and_dtor()
-{
-    rb_node_t* node1 = node_ctor(25);
-    UNITTEST(node1, !=, NULL);
-    UNITTEST(node1->key, ==, 25);
+    size_t* fail_nodes = RB_takeNodsNum(NULL);
+    UNITTEST(fail_nodes, ==, NULL);
 
-    int ret_node_dtor = node_dtor(node1);
-    UNITTEST(ret_node_dtor, ==, 0);
-
-    ret_node_dtor = node_dtor(NULL);
-    UNITTEST(ret_node_dtor, ==, BAD_ARGS);
 }
 
 void Testcase_tree_ctor_and_dtor()
@@ -79,11 +63,7 @@ void Testcase_tree_ctor_and_dtor()
 
     for (int i = 0; i < 3; i++)
     {
-        rb_node_t* node = node_ctor(i);
-        UNITTEST(node, !=, NULL);
-        UNITTEST(node->key, ==, i);
-
-        int ret_insert = RB_insert(tree, node);
+        int ret_insert = RB_insert(tree, i);
         UNITTEST(ret_insert, ==, 0);
     }
 
@@ -102,80 +82,25 @@ void Testcase_tree_ctor_and_dtor()
     tree = tree_ctor();
     UNITTEST(tree, !=, NULL);
 
-    for (int i = 0; i < 3; i++)
-    {
-        rb_node_t* node = node_ctor(i);
-        UNITTEST(node, !=, NULL);
-        UNITTEST(node->key, ==, i);
-
-        int ret_insert = RB_insert(tree, node);
-        UNITTEST(ret_insert, ==, 0);
-    }
-
-    (tree->num_nodes)++;
-    int ret_incr_tree_dtor = tree_dtor(tree);
-    UNITTEST(ret_incr_tree_dtor, ==, 1);
-    int ret_nil_dtor = node_dtor(tree->nil);
-    UNITTEST(ret_nil_dtor, ==, 0);
-
-    tree->root = NULL;
-    tree->nil = NULL;
-    tree->num_nodes = 0;
-
-    free(tree);
-////////////////////////////////////////////////////////////////////////////////
-    tree = tree_ctor();
-    UNITTEST(tree, !=, NULL);
-
-    rb_node_t* node1 = node_ctor(1);
-    UNITTEST(node1, !=, NULL);
-    UNITTEST(node1->key, ==, 1);
-
-    int ret_insert = RB_insert(tree, node1);
+    int ret_insert = RB_insert(tree, 1);
     UNITTEST(ret_insert, ==, 0);
 
-    rb_node_t* node2 = node_ctor(2);
-    UNITTEST(node2, !=, NULL);
-    UNITTEST(node2->key, ==, 2);
-
-    ret_insert = RB_insert(tree, node2);
+    ret_insert = RB_insert(tree, 2);
     UNITTEST(ret_insert, ==, 0);
 
-    tree->num_nodes = 0;
+    size_t* NodesNum = RB_takeNodsNum(tree);
+    UNITTEST(NodesNum, !=, NULL);
+
+    *NodesNum = 0;
 
     int ret_bad_counter_tree_dtor = tree_dtor(tree);
     UNITTEST(ret_bad_counter_tree_dtor, ==, E_TOO_MUCH_ELEM);
 
-    tree->num_nodes = 2;
+    *NodesNum = 2;
     ret_tree_dtor = tree_dtor(tree);
     UNITTEST(ret_tree_dtor, ==, 0);
 ////////////////////////////////////////////////////////////////////////////////
-    tree = tree_ctor();
-    UNITTEST(tree, !=, NULL);
-
-    node1 = node_ctor(2);
-    UNITTEST(node1, !=, NULL);
-    UNITTEST(node1->key, ==, 2);
-
-    ret_insert = RB_insert(tree, node1);
-    UNITTEST(ret_insert, ==, 0);
-
-    node2 = node_ctor(1);
-    UNITTEST(node2, !=, NULL);
-    UNITTEST(node2->key, ==, 1);
-
-    ret_insert = RB_insert(tree, node2);
-    UNITTEST(ret_insert, ==, 0);
-
-    tree->num_nodes = 0;
-
-    ret_bad_counter_tree_dtor = tree_dtor(tree);
-    UNITTEST(ret_bad_counter_tree_dtor, ==, E_TOO_MUCH_ELEM);
-
-    tree->num_nodes = 2;
-    ret_tree_dtor = tree_dtor(tree);
-    UNITTEST(ret_tree_dtor, ==, 0);
-////////////////////////////////////////////////////////////////////////////////
+/*
     tree = tree_ctor();
     UNITTEST(tree, !=, NULL);
 
@@ -187,7 +112,7 @@ void Testcase_tree_ctor_and_dtor()
 
     tree->nil = save_nil;
     ret_tree_dtor = tree_dtor(tree);
-    UNITTEST(ret_tree_dtor, ==, 0);
+    UNITTEST(ret_tree_dtor, ==, 0);*/
 }
 
 void Testcase_dump()
@@ -217,13 +142,11 @@ void Testcase_dump()
     }
 
     int ret_dump_insert = 0;
-    int arr_nums[3] = {11, 2, 14};
+    int arr_nums[] = {11, 7, 16, 19, 13, 14, 12, 15, 18};
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 9; i++)
     {
-        rb_node_t* new_node = node_ctor(arr_nums[i]);
-
-        ret_dump_insert = RB_insert(tree, new_node);
+        ret_dump_insert = RB_insert(tree, arr_nums[i]);
         UNITTEST(ret_dump_insert, ==, 0);
     }
 
@@ -239,9 +162,7 @@ void Testcase_dump()
 
     for (int i = 0; i < 3; i++)
     {
-        rb_node_t* new_node = node_ctor(arr_nums[i]);
-
-        ret_dump_insert = RB_insert(tree, new_node);
+        ret_dump_insert = RB_insert(tree, arr_nums[i]);
         UNITTEST(ret_dump_insert, ==, 0);
     }
 
@@ -251,24 +172,27 @@ void Testcase_dump()
         perror("Open nothing file error\n");
         exit(-1);
     }
-
+/*
     rb_node_t* save_root = tree->root;
     tree->root = NULL;
     int dump_nothing_tree = tree_dump(nothing, tree);
     UNITTEST(dump_nothing_tree, ==, BAD_TREE_CONDITION);
-    tree->root = save_root;
+    tree->root = save_root;*/
 ////////////////////////////////////////////////////////////////////////////////
-    tree->num_nodes = 2;
+    size_t* NodesNum = RB_takeNodsNum(tree);
+    UNITTEST(NodesNum, !=, NULL);
+
+    *NodesNum = 2;
+    int dump_nothing_tree = tree_dump(nothing, tree);
+    UNITTEST(dump_nothing_tree, ==, BAD_TREE_CONDITION);
+    *NodesNum = 3;
+////////////////////////////////////////////////////////////////////////////////
+    *NodesNum = 1;
     dump_nothing_tree = tree_dump(nothing, tree);
     UNITTEST(dump_nothing_tree, ==, BAD_TREE_CONDITION);
-    tree->num_nodes = 3;
+    *NodesNum = 3;
 ////////////////////////////////////////////////////////////////////////////////
-    tree->num_nodes = 1;
-    dump_nothing_tree = tree_dump(nothing, tree);
-    UNITTEST(dump_nothing_tree, ==, BAD_TREE_CONDITION);
-    tree->num_nodes = 3;
-////////////////////////////////////////////////////////////////////////////////
-    tree->root->right->right = NULL;
+ /*   tree->root->right->right = NULL;
     dump_nothing_tree = tree_dump(nothing, tree);
     UNITTEST(dump_nothing_tree, ==, BAD_TREE_CONDITION);
     tree->root->right->right = tree->nil;
@@ -281,7 +205,7 @@ void Testcase_dump()
     tree->root->right->parent = NULL;
     dump_nothing_tree = tree_dump(nothing, tree);
     UNITTEST(dump_nothing_tree, ==, BAD_TREE_CONDITION);
-    tree->root->right->parent = tree->root;
+    tree->root->right->parent = tree->root;*/
 ////////////////////////////////////////////////////////////////////////////////
     fclose(nothing);
     ret_dtor = tree_dtor(tree);
@@ -298,20 +222,18 @@ void Testcase_insert_left_fixup()
 
     for (int i = 0; i < 9; i++)
     {
-        rb_node_t* new_node = node_ctor(arr_nums[i]);
-
-        ret_val_RB_insert = RB_insert(tree, new_node);
+        ret_val_RB_insert = RB_insert(tree, arr_nums[i]);
         UNITTEST(ret_val_RB_insert, ==, 0);
     }
 
-    UNITTEST(tree->root->color, ==, Black);
+    /*UNITTEST(tree->root->color, ==, Black);
     UNITTEST(tree->root->key, ==, 7);
     UNITTEST(tree->root->left->key, ==, 2);
     UNITTEST(tree->root->left->color, ==, Red);
     UNITTEST(tree->root->left->right->key, ==, 5);
     UNITTEST(tree->root->left->right->color, ==, Black);
     UNITTEST(tree->root->left->right->left->key, ==, 4);
-    UNITTEST(tree->root->left->right->left->color, ==, Red);
+    UNITTEST(tree->root->left->right->left->color, ==, Red);*/
 
     FILE* out = fopen("insert_left_fixup.dot", "w");
     if (out == NULL)
@@ -330,7 +252,7 @@ void Testcase_insert_right_fixup()
     rb_tree_t* tree = tree_ctor();
     UNITTEST(tree, !=, NULL);
 
-    int fail_insert = RB_insert(NULL, NULL);
+    int fail_insert = RB_insert(NULL, 0);
     UNITTEST(fail_insert, <, 0);
 
     int ret_val_RB_insert = 0;
@@ -338,12 +260,10 @@ void Testcase_insert_right_fixup()
 
     for (int i = 0; i < 9; i++)
     {
-        rb_node_t* new_node = node_ctor(arr_nums[i]);
-
-        ret_val_RB_insert = RB_insert(tree, new_node);
+        ret_val_RB_insert = RB_insert(tree, arr_nums[i]);
         UNITTEST(ret_val_RB_insert, ==, 0);
     }
-
+    /*
     UNITTEST(tree->root->color, ==, Black);
     UNITTEST(tree->root->key, ==, 13);
     UNITTEST(tree->root->right->key, ==, 16);
@@ -351,7 +271,7 @@ void Testcase_insert_right_fixup()
     UNITTEST(tree->root->right->left->color, ==, Black);
     UNITTEST(tree->root->right->left->right->key, ==, 15);
     UNITTEST(tree->root->right->left->right->color, ==, Red);
-
+    */
     FILE* out = fopen("insert_right_fixup.dot", "w");
     if (out == NULL)
         perror("Open file error\n");
@@ -366,13 +286,13 @@ void Testcase_insert_right_fixup()
 
 void Testcase_delete_and_fixup()
 {
-    int ret_NULL_tree_delete = RB_delete(NULL, NULL);
+    int ret_NULL_tree_delete = RB_delete(NULL, 0);
     UNITTEST(ret_NULL_tree_delete, ==, BAD_ARGS);
 ////////////////////////////////////////////////////////////////////////////////
     rb_tree_t* tree = tree_ctor();
     UNITTEST(tree, !=, NULL);
 
-    int ret_NULL_node_delete = RB_delete(tree, NULL);
+    int ret_NULL_node_delete = RB_delete(tree, 0);
     UNITTEST(ret_NULL_node_delete, ==, BAD_ARGS);
 ////////////////////////////////////////////////////////////////////////////////
     int ret_val_RB_insert = 0;
@@ -380,26 +300,20 @@ void Testcase_delete_and_fixup()
 
     for (int i = 0; i < 9; i++)
     {
-        rb_node_t* new_node = node_ctor(arr_nums[i]);
-
-        ret_val_RB_insert = RB_insert(tree, new_node);
+        ret_val_RB_insert = RB_insert(tree, arr_nums[i]);
         UNITTEST(ret_val_RB_insert, ==, 0);
     }
 
-    int ret_del_root = RB_delete(tree, tree->root);
+    int ret_del_root = RB_delete(tree, 7);
     UNITTEST(ret_del_root, ==, 0);
-    UNITTEST(tree->root->key, ==, 8);
-    UNITTEST(tree->root->right->key, ==, 14);
-    UNITTEST(tree->root->right->color, ==, Red);
 ////////////////////////////////////////////////////////////////////////////////
-    int ret_no_right_delete = RB_delete(tree, tree->root->left->right);
+    int ret_no_right_delete = RB_delete(tree, 5);
     UNITTEST(ret_no_right_delete, ==, 0);
-    UNITTEST(tree->root->left->right->key, ==, 4);
-    UNITTEST(tree->root->left->right->color, ==, Black);
 ////////////////////////////////////////////////////////////////////////////////
-    int ret_delete_min = RB_delete(tree, tree->root->left->left);
+    int ret_delete_min = RB_delete(tree, min_key(tree));
     UNITTEST(ret_delete_min, ==, 0);
-    int ret_no_left_delete = RB_delete(tree, tree->root->left);
+
+    int ret_no_left_delete = RB_delete(tree, 2);
     UNITTEST(ret_no_left_delete, ==, 0);
 
     int ret_dtor = tree_dtor(tree);
@@ -413,16 +327,12 @@ void Testcase_delete_and_fixup()
 
     for (int i = 0; i < 16; i++)
     {
-        rb_node_t* new_node = node_ctor(arr_nums2[i]);
-
-        ret_val_RB_insert = RB_insert(tree, new_node);
+        ret_val_RB_insert = RB_insert(tree, arr_nums2[i]);
         UNITTEST(ret_val_RB_insert, ==, 0);
     }
 
-    int ret_del_right = RB_delete(tree, tree->root->left);
+    int ret_del_right = RB_delete(tree, 11);
     UNITTEST(ret_del_right, ==, 0);
-    UNITTEST(tree->root->left->right->key, ==, 10);
-    UNITTEST(tree->root->left->right->color, ==, Red);
 
     ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);
@@ -434,26 +344,20 @@ void Testcase_delete_and_fixup()
 
     for (int i = 0; i < 10; i++)
     {
-        rb_node_t* new_node = node_ctor(arr_nums3[i]);
-
-        ret_val_RB_insert = RB_insert(tree, new_node);
+        ret_val_RB_insert = RB_insert(tree, arr_nums3[i]);
         UNITTEST(ret_val_RB_insert, ==, 0);
     }
+    
+    int ret_zombie_first_left = RB_delete(tree, 11);
+    UNITTEST(ret_zombie_first_left, ==, 0);
+    ret_zombie_first_left = RB_delete(tree, 5);
+    UNITTEST(ret_zombie_first_left, ==, 0);
+    ret_zombie_first_left = RB_delete(tree, 16);
+    UNITTEST(ret_zombie_first_left, ==, 0);
 
-    int ret_zombie_first_left = RB_delete(tree, tree->root->left);
-    UNITTEST(ret_zombie_first_left, ==, 0);
-    ret_zombie_first_left = RB_delete(tree, tree->root->left->left);
-    UNITTEST(ret_zombie_first_left, ==, 0);
-    tree->root->left->right->color = Black;
-    tree->root->right->left->right->color = Black;
-    tree->root->right->right->left->color = Black;
-    ret_zombie_first_left = RB_delete(tree, tree->root->left);
-    UNITTEST(ret_zombie_first_left, ==, 0);
-    UNITTEST(tree->root->left->right->color, ==, Red);
-
-    int ret_zombie_second_right = RB_delete(tree, tree->root->left->right);
+    int ret_zombie_second_right = RB_delete(tree, 12);
     UNITTEST(ret_zombie_second_right, ==, 0);
-    ret_zombie_second_right = RB_delete(tree, tree->root->right);
+    ret_zombie_second_right = RB_delete(tree, 18);
     UNITTEST(ret_zombie_second_right, ==, 0);
 
     ret_dtor = tree_dtor(tree);
@@ -466,25 +370,19 @@ void Testcase_delete_and_fixup()
 
     for (int i = 0; i < 9; i++)
     {
-        rb_node_t* new_node = node_ctor(arr_nums4[i]);
-
-        ret_val_RB_insert = RB_insert(tree, new_node);
+        ret_val_RB_insert = RB_insert(tree, arr_nums4[i]);
         UNITTEST(ret_val_RB_insert, ==, 0);
     }
 
-    int ret_zombie_third_left = RB_delete(tree, tree->root->left->left);
+    int ret_zombie_third_left = RB_delete(tree, 7);
     UNITTEST(ret_zombie_third_left, ==, 0);
+    
 
-    tree->root->left->right->color = Black;
-    tree->root->right->color = Black;
-    tree->root->right->left->color = Red;
-    tree->root->right->left->right->color = Black;
-
-    ret_zombie_third_left = RB_delete(tree, tree->root->left);
+    ret_zombie_third_left = RB_delete(tree, 11);
     UNITTEST(ret_zombie_third_left, ==, 0);
 ////////////////////////////////////////////////////////////////////////////////
-    int ret_nil_delete = RB_delete(tree, tree->nil);
-    UNITTEST(ret_nil_delete, ==, ERROR);
+/*    int ret_nil_delete = RB_delete(tree, );
+    UNITTEST(ret_nil_delete, ==, ERROR);*/
 ////////////////////////////////////////////////////////////////////////////////
     rb_node_t* save = tree->root->right->right->left;
     tree->root->right->right->left = NULL;
@@ -519,37 +417,44 @@ void Testcase_delete_and_fixup()
     ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);
 }
+*/
 
 void Testcase_search()
 {
-    rb_node_t* ret_NULL_search = RB_search(NULL, 42);
-    UNITTEST(ret_NULL_search, ==, NULL);
+    int ret_NULL_search = RB_search(NULL, 42);
+    UNITTEST(ret_NULL_search, ==, BAD_ARGS);
 ////////////////////////////////////////////////////////////////////////////////
     rb_tree_t* tree = tree_ctor();
     UNITTEST(tree, !=, NULL);
 
-    rb_node_t* ret_empty_tree_search = RB_search(tree, 42);
-    UNITTEST(ret_empty_tree_search, ==, NULL);
+    int ret_empty_tree_search = RB_search(tree, 42);
+    UNITTEST(ret_empty_tree_search, ==, 0);
 ////////////////////////////////////////////////////////////////////////////////
     int ret_val_RB_insert = 0;
     int arr_nums[9] = {11, 2, 14, 1, 7, 15, 5, 8, 4};
 
     for (int i = 0; i < 9; i++)
     {
-        rb_node_t* new_node = node_ctor(arr_nums[i]);
-
-        ret_val_RB_insert = RB_insert(tree, new_node);
+        ret_val_RB_insert = RB_insert(tree, arr_nums[i]);
         UNITTEST(ret_val_RB_insert, ==, 0);
     }
 
-    rb_node_t* ret_right_search = RB_search(tree, 15);
-    UNITTEST(ret_right_search->key, ==, 15);
+    int ret_right_search = RB_search(tree, 15);
+    UNITTEST(ret_right_search, ==, 1);
 
-    rb_node_t* ret_left_search = RB_search(tree, 1);
-    UNITTEST(ret_left_search->key, ==, 1);
+    int ret_left_search = RB_search(tree, 1);
+    UNITTEST(ret_left_search, ==, 1);
 
-    rb_node_t* ret_search_nonexistent_key = RB_search(tree, 42);
-    UNITTEST(ret_search_nonexistent_key, ==, NULL);
+    int ret_search_nonexistent_key = RB_search(tree, 42);
+    UNITTEST(ret_search_nonexistent_key, ==, 0);
+////////////////////////////////////////////////////////////////////////////////
+    size_t* NodesNum = RB_takeNodsNum(tree);
+    UNITTEST(NodesNum, !=, NULL);
+
+    *NodesNum = 0;
+    int ret_loopcheck_search = RB_search(tree, 15);
+    UNITTEST(ret_loopcheck_search, ==, 0);
+    *NodesNum = 9;
 ////////////////////////////////////////////////////////////////////////////////
     int ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);
@@ -557,30 +462,31 @@ void Testcase_search()
 
 void Testcase_max()
 {
-    rb_node_t* ret_NULL_tree_max = max_node(NULL, NULL);
-    UNITTEST(ret_NULL_tree_max, ==, NULL);
+    int ret_NULL_tree_max = max_key(NULL);
+    UNITTEST(ret_NULL_tree_max, ==, Poison_key);
 ////////////////////////////////////////////////////////////////////////////////
     rb_tree_t* tree = tree_ctor();
     UNITTEST(tree, !=, NULL);
 
-    ret_NULL_tree_max = max_node(tree, NULL);
-    UNITTEST(ret_NULL_tree_max, ==, NULL);
+    ret_NULL_tree_max = max_key(tree);
+    UNITTEST(ret_NULL_tree_max, ==, Poison_key);
 ////////////////////////////////////////////////////////////////////////////////
     for (int i = 0; i < 3; i++)
     {
-        rb_node_t* new_node = node_ctor(i);
-
-        int ret_dump_insert = RB_insert(tree, new_node);
+        int ret_dump_insert = RB_insert(tree, i);
         UNITTEST(ret_dump_insert, ==, 0);
     }
 
-    rb_node_t* ret_tree_max = max_node(tree, tree->root);
-    UNITTEST(ret_tree_max->key, ==, 2);
+    int ret_tree_max = max_key(tree);
+    UNITTEST(ret_tree_max, ==, 2);
 ////////////////////////////////////////////////////////////////////////////////
-    tree->num_nodes = 0;
-    rb_node_t* ret_loopcheck_max = max_node(tree, tree->root);
-    UNITTEST(ret_loopcheck_max, ==, NULL);
-    tree->num_nodes = 3;
+    size_t* NodesNum = RB_takeNodsNum(tree);
+    UNITTEST(NodesNum, !=, NULL);
+
+    *NodesNum = 0;
+    int ret_loopcheck_min = max_key(tree);
+    UNITTEST(ret_loopcheck_min, ==, Poison_key);
+    *NodesNum = 3;
 ////////////////////////////////////////////////////////////////////////////////
     int ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);
@@ -588,41 +494,42 @@ void Testcase_max()
 
 void Testcase_min()
 {
-    rb_node_t* ret_NULL_tree_min = min_node(NULL, NULL);
-    UNITTEST(ret_NULL_tree_min, ==, NULL);
+    int ret_NULL_tree_min = min_key(NULL);
+    UNITTEST(ret_NULL_tree_min, ==, Poison_key);
 ////////////////////////////////////////////////////////////////////////////////
     rb_tree_t* tree = tree_ctor();
     UNITTEST(tree, !=, NULL);
 
-    ret_NULL_tree_min = min_node(tree, NULL);
-    UNITTEST(ret_NULL_tree_min, ==, NULL);
+    ret_NULL_tree_min = min_key(tree);
+    UNITTEST(ret_NULL_tree_min, ==, Poison_key);
 ////////////////////////////////////////////////////////////////////////////////
     for (int i = 0; i < 3; i++)
     {
-        rb_node_t* new_node = node_ctor(i);
-
-        int ret_dump_insert = RB_insert(tree, new_node);
+        int ret_dump_insert = RB_insert(tree, i + 2);
         UNITTEST(ret_dump_insert, ==, 0);
     }
 
-    rb_node_t* ret_tree_min = min_node(tree, tree->root);
-    UNITTEST(ret_tree_min->key, ==, 0);
+    int ret_tree_min = min_key(tree);
+    UNITTEST(ret_tree_min, ==, 2);
 ////////////////////////////////////////////////////////////////////////////////
-    tree->num_nodes = 0;
-    rb_node_t* ret_loopcheck_min = min_node(tree, tree->root);
-    UNITTEST(ret_loopcheck_min, ==, NULL);
-    tree->num_nodes = 3;
+    size_t* NodesNum = RB_takeNodsNum(tree);
+    UNITTEST(NodesNum, !=, NULL);
+
+    *NodesNum = 0;
+    int ret_loopcheck_min = min_key(tree);
+    UNITTEST(ret_loopcheck_min, ==, Poison_key);
+    *NodesNum = 3;
 ////////////////////////////////////////////////////////////////////////////////
     int ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);
 }
 
-static int sum(rb_tree_t* tree, rb_node_t* node, void* data)
+static int sum(int key, void* data)
 {
     if (data == NULL)
         return -1;
 
-    *((int*) data) += node->key;
+    *((int*) data) += key;
     return *((int*) data);
 }
 
@@ -643,26 +550,27 @@ void Testcase_foreach()
 ////////////////////////////////////////////////////////////////////////////////
     for (int i = 0; i < 3; i++)
     {
-        rb_node_t* new_node = node_ctor(i);
-
-        int ret_dump_insert = RB_insert(tree, new_node);
+        int ret_dump_insert = RB_insert(tree, i);
         UNITTEST(ret_dump_insert, ==, 0);
     }
 
     int ret_sum_foreach = foreach(tree, sum, &tree_sum);
     UNITTEST(ret_sum_foreach, ==, 0);
     UNITTEST(tree_sum, ==, 3);
-////////////////////////////////////////////////////////////////////////////////
-    tree->num_nodes = 0;
+
+    size_t* NodesNum = RB_takeNodsNum(tree);
+    UNITTEST(NodesNum, !=, NULL);
+
+    *NodesNum = 0;
     int ret_loopcheck_foreach = foreach(tree, sum, &tree_sum);
     UNITTEST(ret_loopcheck_foreach, ==, E_TOO_MUCH_ELEM);
-    tree->num_nodes = 3;
+    *NodesNum = 3;
 ////////////////////////////////////////////////////////////////////////////////
-    rb_node_t* saved_root = tree->root;
+/*    rb_node_t* saved_root = tree->root;
     tree->root = NULL;
     int ret_bad_node_foreach = foreach(tree, sum, &tree_sum);
     UNITTEST(ret_bad_node_foreach, ==, BAD_ARGS);
-    tree->root = saved_root;
+    tree->root = saved_root;*/
 ////////////////////////////////////////////////////////////////////////////////
     int ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);

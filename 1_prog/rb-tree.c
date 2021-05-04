@@ -17,9 +17,9 @@
 static void* mymalloc(size_t size)
 {
     static int num_iter = 0;
-    if (num_iter < 4){
+    if (num_iter < 3){
         num_iter++;
-        if (num_iter != 2){
+        if (num_iter != 1){
             errno = ENOMEM;
             return NULL;
         }
@@ -33,7 +33,26 @@ static void* mymalloc(size_t size)
 #define Malloc(x) malloc(x)
 #endif
 
-static rb_node_t*   node_create     ();
+//node of red-black tree struct
+
+typedef struct rb_node{
+    struct rb_node* parent;
+    struct rb_node* left;
+    struct rb_node* right;
+    int color;
+    int key;
+} rb_node_t;
+
+//red-black tree struct
+
+struct rb_tree{
+    struct rb_node* nil;
+    struct rb_node* root;
+    size_t num_nodes;
+};
+
+static rb_node_t*   node_ctor       ();
+static int          node_delete     (rb_node_t* node);
 static int          insert_fixup    (rb_tree_t* tree, rb_node_t* new_node);
 static void         left_rotate     (rb_tree_t* tree, rb_node_t* node);
 static void         right_rotate    (rb_tree_t* tree, rb_node_t* node);
@@ -41,9 +60,32 @@ static int          node_dump       (FILE* out, rb_node_t* node, rb_tree_t* tree
 static int          delete_fixup    ();
 static int          node_transplant (rb_tree_t* tree, rb_node_t* to, rb_node_t* who);
 static int          subtree_distruct(rb_node_t* root, rb_node_t* nil, size_t* counter);
-static int          call            (rb_node_t* node, rb_tree_t* tree, int (*func)(rb_tree_t*, rb_node_t*, void*), void* data, size_t counter);
+static int          call            (rb_node_t* node, rb_tree_t* tree, int (*func)(int, void*), void* data, size_t counter);
+static rb_node_t*   take_node       (rb_tree_t* tree, int key);
+static rb_node_t*   take_min_node   (rb_tree_t* tree, rb_node_t* node);
 
-static rb_node_t* node_create()
+rb_tree_t* tree_ctor()
+{
+    rb_tree_t* tree = (rb_tree_t*) Malloc(sizeof(rb_tree_t));
+    if (tree == NULL)
+        return NULL;
+
+    tree->num_nodes = 0;
+
+    tree->nil = node_ctor();
+    if (tree->nil == NULL)
+    {
+        free(tree);
+        return NULL;
+    }
+    tree->nil->color = Black;
+
+    tree->root = tree->nil;
+
+    return tree;
+}
+
+static rb_node_t* node_ctor()
 {
     rb_node_t* node = (rb_node_t*) Malloc(sizeof(rb_node_t));
     if (node == NULL)
@@ -59,52 +101,24 @@ static rb_node_t* node_create()
     return node;
 }
 
-rb_tree_t* tree_ctor()
+int RB_insert(rb_tree_t* tree, int key)
 {
-    rb_tree_t* tree = (rb_tree_t*) Malloc(sizeof(rb_tree_t));
     if (tree == NULL)
-        return NULL;
-
-    tree->num_nodes = 0;
-
-    tree->nil = node_create();
-    if (tree->nil == NULL)
-    {
-        free(tree);
-        return NULL;
-    }
-    tree->nil->color = Black;
-
-    tree->root = tree->nil;
-
-    return tree;
-}
-
-rb_node_t* node_ctor(int node_key)
-{
-    rb_node_t* new_node = node_create();
-    if (new_node != NULL)
-        new_node->key = node_key;
-
-    return new_node;
-}
-
-int RB_insert(rb_tree_t* tree, rb_node_t* new_node)
-{
-    if (tree == NULL || new_node == NULL)
         return BAD_ARGS;
 
     rb_node_t* Nil = tree->nil;
-    int new_key = new_node->key;
 
     rb_node_t* cur_node = tree->root;
     rb_node_t* new_parent = Nil;
+
+    rb_node_t* new_node = node_ctor();
+    new_node->key = key;
 
     while(cur_node != Nil)
     {
         new_parent = cur_node;
 
-        if (new_key > cur_node->key)
+        if (key > cur_node->key)
             cur_node = cur_node->right;
         else
             cur_node = cur_node->left;
@@ -112,7 +126,7 @@ int RB_insert(rb_tree_t* tree, rb_node_t* new_node)
 
     if (new_parent == Nil)
         tree->root = new_node;
-    else if(new_key > new_parent->key)
+    else if(key > new_parent->key)
         new_parent->right = new_node;
     else
         new_parent->left = new_node;
@@ -247,12 +261,14 @@ static void right_rotate(rb_tree_t* tree, rb_node_t* node)
     return;
 }
 
-int RB_delete(rb_tree_t* tree, rb_node_t* node)
+int RB_delete(rb_tree_t* tree, int key)
 {
-    if (tree == NULL || node == NULL)
+    if (tree == NULL)
         return BAD_ARGS;
-
     rb_node_t* nil = tree->nil;
+    rb_node_t* node = take_node(tree, key);
+    if (node == NULL)
+        return BAD_ARGS;
     rb_node_t* old = node;
     int old_orig_color = old->color;
     rb_node_t* replaced = NULL;
@@ -273,7 +289,7 @@ int RB_delete(rb_tree_t* tree, rb_node_t* node)
     }
     else
     {
-        old = min_node(tree, node->right);
+        old = take_min_node(tree, node->right);
         if (old == NULL)
             return ERROR;
         //Develop time checks
@@ -283,7 +299,7 @@ int RB_delete(rb_tree_t* tree, rb_node_t* node)
         old_orig_color =  old->color;
         replaced = old->right;
         if (old->parent == node)
-            replaced->parent = old; // it heps us if replaced == nil
+            replaced->parent = old;
         else
         {
             int ret = node_transplant(tree, old, old->right);
@@ -298,7 +314,7 @@ int RB_delete(rb_tree_t* tree, rb_node_t* node)
         old->color = node->color;
     }
 
-    node_dtor(node);
+    node_delete(node);
 
     (tree->num_nodes)--;
 
@@ -328,7 +344,7 @@ static int node_transplant(rb_tree_t* tree, rb_node_t* to, rb_node_t* who)
     return 0;
 }
 
-int node_dtor(rb_node_t* node)
+static int node_delete(rb_node_t* node)
 {
     if (node == NULL)
         return BAD_ARGS;
@@ -361,7 +377,7 @@ int tree_dtor(rb_tree_t* tree)
         return counter;
     }
 
-    ret = node_dtor(tree->nil);
+    ret = node_delete(tree->nil);
 
     tree->root = NULL;
     tree->nil = NULL;
@@ -399,7 +415,7 @@ static int subtree_distruct(rb_node_t* root, rb_node_t* nil, size_t* counter)
 
     (*counter)--;
 
-    ret = node_dtor(root);
+    ret = node_delete(root);
 
     return ret;
 }
@@ -495,7 +511,7 @@ static int delete_fixup(rb_tree_t* tree, rb_node_t* extra_black)
     return 0;
 }
 
-int foreach(rb_tree_t* tree, int (*func)(rb_tree_t*, rb_node_t*, void*), void* data)
+int foreach(rb_tree_t* tree, int (*func)(int, void*), void* data)
 {
     if (tree == NULL || func == NULL)
         return BAD_ARGS;
@@ -506,7 +522,7 @@ int foreach(rb_tree_t* tree, int (*func)(rb_tree_t*, rb_node_t*, void*), void* d
 }
 
 static int call(rb_node_t* node, rb_tree_t* tree,
-    int (*func)(rb_tree_t*, rb_node_t*, void*), void* data, size_t counter)
+    int (*func)(int, void*), void* data, size_t counter)
 {
     if (node == NULL || tree == NULL || func == NULL)
         return BAD_ARGS;
@@ -527,7 +543,7 @@ static int call(rb_node_t* node, rb_tree_t* tree,
             return ret;
     }
 
-    ret = func(tree, node, data);
+    ret = func(node -> key, data);
     if (ret < 0)
         return ret;
 
@@ -541,7 +557,7 @@ static int call(rb_node_t* node, rb_tree_t* tree,
     return 0;
 }
 
-rb_node_t* min_node(rb_tree_t* tree, rb_node_t* node)
+static rb_node_t* take_min_node(rb_tree_t* tree, rb_node_t* node)
 {
     if (tree == NULL || node == NULL)
         return NULL;
@@ -560,10 +576,29 @@ rb_node_t* min_node(rb_tree_t* tree, rb_node_t* node)
     return NULL;
 }
 
-rb_node_t* max_node(rb_tree_t* tree, rb_node_t* node)
+int min_key(rb_tree_t* tree)
 {
-    if (tree == NULL || node == NULL)
-        return NULL;
+    if (tree == NULL)
+        return Poison_key;
+
+    size_t counter = tree->num_nodes;
+    rb_node_t* nil = tree->nil;
+    rb_node_t* min = tree->root;
+
+    for(; counter > 0; counter--)
+    {
+        if (min->left == nil)
+            return min -> key;
+        min = min->left;
+    }
+
+    return Poison_key;
+}
+
+int max_key(rb_tree_t* tree)
+{
+    if (tree == NULL)
+        return Poison_key;
 
     size_t counter = tree->num_nodes;
     rb_node_t* nil = tree->nil;
@@ -572,14 +607,37 @@ rb_node_t* max_node(rb_tree_t* tree, rb_node_t* node)
     for (; counter > 0; counter--)
     {
         if (max->right == nil)
-            return max;
+            return max->key;
         max = max->right;
     }
 
-    return NULL;
+    return Poison_key;
 }
 
-rb_node_t* RB_search(rb_tree_t* tree, int key)
+int RB_search(rb_tree_t* tree, int key)
+{
+    if (tree == NULL)
+        return BAD_ARGS;
+
+    rb_node_t* cur_node = tree->root;
+    size_t counter = tree->num_nodes;
+
+    for(; counter > 0; counter--)
+    {
+        if (cur_node == tree->nil)
+            return 0;
+        if (key > cur_node->key)
+            cur_node = cur_node->right;
+        else if (key < cur_node->key)
+            cur_node = cur_node->left;
+        else
+            return 1;
+    }
+
+    return 0;
+}
+
+static rb_node_t* take_node(rb_tree_t* tree, int key)
 {
     if (tree == NULL)
         return NULL;
@@ -625,13 +683,13 @@ int tree_dump(FILE* out, rb_tree_t* tree)
     size_t counter = tree->num_nodes;
     int ret = node_dump(out, tree->root, tree, &counter);
 
+    if (ret != 0)
+        return BAD_TREE_CONDITION;
+
     fprintf(out, "\t\tkey_nil [label = \"nil\", shape = \"diamond\","
                  " color = \"#FFFFFF\", fontcolor = \"#000000\"];\n");
 
-    fprintf(out, "}\n");
-
-    if (ret != 0)
-        return BAD_TREE_CONDITION;
+    fprintf(out, "}\n"); 
 
     return 0;
 }
@@ -654,17 +712,11 @@ static int node_dump(FILE* out, rb_node_t* node, rb_tree_t* tree, size_t* counte
                      "fillcolor = \"#000000\", fontcolor = \"#FFFFFF\"");
     fprintf(out, "];\n");
 
-    if (node->parent == NULL)
-        return ERROR;
-
     if (node->parent == tree->nil)
         fprintf(out, "\t\tkey_%d -> root_nil", node->key);
     else
         fprintf(out, "\t\tkey_%d -> key_%d", node->key, node->parent->key);
     fprintf(out, "[label = \"parent\"];\n");
-
-    if (node->left == NULL)
-        return ERROR;
 
     if (node->left == tree->nil)
         fprintf(out, "\t\tkey_%d -> key_nil [label = \"left\"];\n", node->key);
@@ -675,9 +727,6 @@ static int node_dump(FILE* out, rb_node_t* node, rb_tree_t* tree, size_t* counte
         if (ret < 0)
             return ret;
     }
-
-    if (node->right == NULL)
-        return ERROR;
 
     if (node->right == tree->nil)
         fprintf(out, "\t\tkey_%d -> key_nil [label = \"right\"];\n", node->key);
@@ -691,4 +740,11 @@ static int node_dump(FILE* out, rb_node_t* node, rb_tree_t* tree, size_t* counte
     }
 
     return 0;
+}
+
+size_t* RB_takeNodsNum (rb_tree_t* tree){
+    if (tree != NULL)
+        return &(tree->num_nodes);
+
+    return NULL;
 }
