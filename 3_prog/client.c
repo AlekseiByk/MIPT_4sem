@@ -53,9 +53,14 @@ int main(int argc, char ** argv) {
         .sin_port	= htons(port_id),
         .sin_addr	= htonl(INADDR_ANY)
     };
+    printf ("a");
+    fflush(0);
 
     ret = bind(sk, (struct sockaddr*) &addr1, sizeof(addr1));
     CHECK_ERROR(ret, "bind fail");
+
+    printf ("a");
+    fflush(0);
 
     int code_word = 0;
     unsigned int size = sizeof(addr1);

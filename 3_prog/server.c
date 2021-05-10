@@ -53,8 +53,14 @@ int main(int argc, char ** argv) {
 	ret = setsockopt(sk, SOL_SOCKET, SO_BROADCAST, &a, sizeof(a));
 	CHECK_ERROR(ret, "setsockopt fail");
 
+	printf ("a");
+    fflush(0);
+
 	sendto(sk, &magic, sizeof(magic), 0,(struct sockaddr*) &addr1, sizeof(addr1));
 	CHECK_ERROR(ret, "sendto error");
+
+	printf ("a");
+    fflush(0);
 
 	shutdown(sk, SHUT_RDWR);
 	close(sk);
