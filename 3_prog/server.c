@@ -53,14 +53,8 @@ int main(int argc, char ** argv) {
 	ret = setsockopt(sk, SOL_SOCKET, SO_BROADCAST, &a, sizeof(a));
 	CHECK_ERROR(ret, "setsockopt fail");
 
-	printf ("a");
-    fflush(0);
-
 	sendto(sk, &magic, sizeof(magic), 0,(struct sockaddr*) &addr1, sizeof(addr1));
 	CHECK_ERROR(ret, "sendto error");
-
-	printf ("a");
-    fflush(0);
 
 	shutdown(sk, SHUT_RDWR);
 	close(sk);
@@ -74,6 +68,9 @@ int main(int argc, char ** argv) {
 		.sin_addr	= htonl(INADDR_ANY)
 	};
 
+	ret = setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+	CHECK_ERROR(ret, "setsockopt fail");
+
 	ret = bind(sk, (struct sockaddr*) &addr, sizeof(addr));
 	CHECK_ERROR(ret, "bind error");
 
@@ -86,8 +83,10 @@ int main(int argc, char ** argv) {
 
 	write(sk2, "hello world!...", sizeof("hello world!..."));
 
-	shutdown(sk, SHUT_RDWR);
-	shutdown(sk2, SHUT_RDWR);
+	char buf[17];
+	read(sk2, buf, 17);
+	printf("%s\n", buf);
+
 	close(sk);
 	close(sk2);
 	return 0;

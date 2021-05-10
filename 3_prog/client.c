@@ -53,14 +53,12 @@ int main(int argc, char ** argv) {
         .sin_port	= htons(port_id),
         .sin_addr	= htonl(INADDR_ANY)
     };
-    printf ("a");
-    fflush(0);
-
+    //*------------------------------------------------------------------------------------------------------------
+    ret = setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+	CHECK_ERROR(ret, "setsockopt fail");
+    //*------------------------------------------------------------------------------------------------------------
     ret = bind(sk, (struct sockaddr*) &addr1, sizeof(addr1));
     CHECK_ERROR(ret, "bind fail");
-
-    printf ("a");
-    fflush(0);
 
     int code_word = 0;
     unsigned int size = sizeof(addr1);
@@ -79,8 +77,11 @@ int main(int argc, char ** argv) {
         .sin_family = AF_INET,
         .sin_port	= htons(port_id),
         .sin_addr	= ((struct sockaddr_in *) &addr1) -> sin_addr
-    };	
-    
+    };
+ /*   //*------------------------------------------------------------------------------------------------------------
+    ret = setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+	CHECK_ERROR(ret, "setsockopt fail");
+*/
     ret = connect (sk, (struct sockaddr*) &addr, sizeof(addr));
     CHECK_ERROR(ret, "connect fail");
 
@@ -88,7 +89,8 @@ int main(int argc, char ** argv) {
     read(sk, buf, 16);
     printf("%s\n", buf);
 
-    shutdown(sk, SHUT_RDWR);
+    write(sk, "answer delivered", 17);
+
     close(sk);
 	return 0;
 }
