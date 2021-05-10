@@ -1,4 +1,4 @@
 all:
-	gcc -Wall server.c -o server -pthread -lm
-	gcc -Wall client.c -o client -pthread -lm
+	gcc server.c -o server -pthread -lm
+	gcc client.c -o client -pthread -lm
 

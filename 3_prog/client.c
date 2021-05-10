@@ -58,8 +58,14 @@ int main(int argc, char ** argv) {
     CHECK_ERROR(ret, "bind fail");
 
     int code_word = 0;
-    ret = recvfrom(sk, &code_word, sizeof(code_word), 0, (struct sockaddr*) &addr1, NULL);
+    unsigned int size = sizeof(addr1);
+    ret = recvfrom(sk, &code_word, sizeof(code_word), 0, (struct sockaddr*) &addr1, &size);
     CHECK_ERROR(ret, "recv fail");
+
+    printf("%x\n", code_word);
+
+    shutdown(sk, SHUT_RDWR);
+    close(sk);
 //**********************************************************************************************************
     sk = socket (PF_INET, SOCK_STREAM, 0);
     CHECK_ERROR(sk, "tcp socket error");
@@ -76,8 +82,9 @@ int main(int argc, char ** argv) {
     char buf[16];
     read(sk, buf, 16);
     printf("%s\n", buf);
-    
 
+    shutdown(sk, SHUT_RDWR);
+    close(sk);
 	return 0;
 }
 

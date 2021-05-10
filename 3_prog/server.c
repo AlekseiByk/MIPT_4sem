@@ -55,6 +55,9 @@ int main(int argc, char ** argv) {
 
 	sendto(sk, &magic, sizeof(magic), 0,(struct sockaddr*) &addr1, sizeof(addr1));
 	CHECK_ERROR(ret, "sendto error");
+
+	shutdown(sk, SHUT_RDWR);
+	close(sk);
 //**********************************************************************************************************
 	sk = socket(PF_INET, SOCK_STREAM, 0);
 	CHECK_ERROR(ret, "tcp socket");
@@ -69,14 +72,18 @@ int main(int argc, char ** argv) {
 	CHECK_ERROR(ret, "bind error");
 
 	ret = listen(sk, 256);
-	CHECK_ERROR(ret, "listen error");		
+	CHECK_ERROR(ret, "listen error");
 
-	int sk2 = accept(sk, (struct sockaddr*) &addr, NULL);
+	unsigned int size = sizeof(addr);
+	int sk2 = accept(sk, (struct sockaddr*) &addr, &size);
 	CHECK_ERROR(sk2, "accept error");
 
 	write(sk2, "hello world!...", sizeof("hello world!..."));
-	
 
+	shutdown(sk, SHUT_RDWR);
+	shutdown(sk2, SHUT_RDWR);
+	close(sk);
+	close(sk2);
 	return 0;
 }
 
