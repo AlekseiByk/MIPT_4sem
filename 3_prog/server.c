@@ -111,12 +111,21 @@ int main(int argc, char ** argv) {
 	double left_lim_temp = left_lim;
 
 	for (int i = 0; i < input; i++){
-		write(workers[i].socket, &left_lim_temp, sizeof(int));
+		write(workers[i].socket, &left_lim_temp, sizeof(double));
 		left_lim_temp += ((double) (right_lim - left_lim)) / thread_sum * workers[i].thread_num;
-		write(workers[i].socket, &left_lim_temp, sizeof(int));
+		write(workers[i].socket, &left_lim_temp, sizeof(double));
 	}
 
-	for(int i = 0; i < input; i++)
+	double result = 0;
+
+	for(int i = 0; i < input; i++){
+		double worker_result = 0;
+		read(workers[i].socket, &worker_result, sizeof(double));
+		result += worker_result;
+	}
+
+	printf("calculation result: %lf", result);
+
 
 	free(workers);
 	close(sk);
