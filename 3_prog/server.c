@@ -112,7 +112,7 @@ int main(int argc, char ** argv) {
 
 	for (int i = 0; i < input; i++){
 		write(workers[i].socket, &left_lim_temp, sizeof(double));
-		left_lim_temp += ((double) (right_lim - left_lim)) / thread_sum * workers[i].thread_num;
+		left_lim_temp += ((double) (right_lim - left_lim)) / threads_sum * workers[i].thread_num;
 		write(workers[i].socket, &left_lim_temp, sizeof(double));
 	}
 
