@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
 
 #define CHECK_ERROR(ret, msg)       \
             do {if (ret == -1){     \
@@ -92,6 +93,8 @@ int main(int argc, char ** argv) {
 */
     ret = connect (sk, (struct sockaddr*) &addr, sizeof(addr));
     CHECK_ERROR(ret, "connect fail");
+
+    printf("connected to server: %s\n", inet_ntoa(((struct sockaddr_in *) &addr1) -> sin_addr));
 //**********************************************************************************************************
     ret = write(sk, &input, sizeof(int));
     CHECK_ERROR(ret, "write fail");

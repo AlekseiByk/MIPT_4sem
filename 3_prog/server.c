@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
 
 #define CHECK_ERROR(ret, msg)       \
             do {if (ret == -1){     \
@@ -106,6 +107,8 @@ int main(int argc, char ** argv) {
 		threads_sum += workers[i].thread_num;
 	}
 	printf("threads num = %d\n", threads_sum);
+
+
 
 	free(workers);
 	close(sk);
