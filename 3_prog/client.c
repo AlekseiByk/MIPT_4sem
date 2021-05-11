@@ -106,7 +106,7 @@ int main(int argc, char ** argv) {
 	}
 
 	int proc_number = get_nprocs();
-	number_of_proc = MAX(proc_number, input);
+	int number_of_proc = MAX(proc_number, input);
 	int cache_size = 0;
 	fscanf(fin, "%d", &cache_size);
 	fclose (fin);
@@ -132,14 +132,14 @@ int main(int argc, char ** argv) {
 
 	for (int i = 0; i < number_of_proc ; i++){
 
-		err = pthread_create(&(threads[i]), NULL, pthread_function,(void*) pthreads_info[i]);
-		check_error(err, "pthread_create");
+		ret = pthread_create(&(threads[i]), NULL, pthread_function,(void*) pthreads_info[i]);
+		CHECK_ERROR(ret, "pthread_create");
 	}
 
 	for (int i = 0; i < number_of_proc; i++){
 
-		pthread_join(threads[i], NULL);
-		check_error(err, "pthread_join");
+		ret = pthread_join(threads[i], NULL);
+		CHECK_ERROR(ret, "pthread_join");
 	}
 
 	double self_result = 0;
