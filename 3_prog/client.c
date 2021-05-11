@@ -132,7 +132,7 @@ void *pthread_function(void * arg)
 	CPU_SET(mission -> proc_number, &cpuset);
 
 	int err = pthread_setaffinity_np( pthread_self(), sizeof(cpuset), &cpuset);
-	check_error(err, "pthread_setaffinity_np");
+	CHECK_ERROR(err, "pthread_setaffinity_np");
 
 	double x = mission -> a;
 	double end = mission -> b;
