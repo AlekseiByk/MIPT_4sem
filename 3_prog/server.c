@@ -22,8 +22,22 @@
                 exit(EXIT_FAILURE); \
             }} while(0);
 
-const int port_id = 8321;
-const int magic   = 0xBEAF;
+typedef struct{
+	int socket;
+	int thread_num;
+} worker_info_t;
+
+typedef struct{
+	double a;
+	double b;
+	double result;
+	int proc_number;
+} mission_t;
+
+const double left_lim  = 0;
+const double right_lim = 8;
+const int 	 port_id   = 8321;
+const int 	 magic     = 0xBEAF;
 
 int takenumber (char * str);
 
@@ -78,17 +92,25 @@ int main(int argc, char ** argv) {
 	CHECK_ERROR(ret, "listen error");
 
 	unsigned int size = sizeof(addr);
-	int sk2 = accept(sk, (struct sockaddr*) &addr, &size);
-	CHECK_ERROR(sk2, "accept error");
+	worker_info_t *workers = (worker_info_t*) calloc(input, sizeof(worker_info_t));
+	for (int i = 0; i < input; i++){
+		workers[i].socket = accept(sk, (struct sockaddr*) &addr, &size);
+		CHECK_ERROR(workers[i].socket, "accept error");
+	}
+	
+	int threads_sum = 0;
+	for (int i = 0; i < input; i++){
+		ret = read(workers[i].socket, &workers[i].thread_num, sizeof(int));
+		CHECK_ERROR(ret, "read error");
 
-	write(sk2, "hello world!...", sizeof("hello world!..."));
+		threads_sum += workers[i].thread_num;
+	}
+	printf("threads num = %d\n", threads_sum);
 
-	char buf[17];
-	read(sk2, buf, 17);
-	printf("%s\n", buf);
-
+	free(workers);
 	close(sk);
-	close(sk2);
+	for (int i = 0; i < input; i++)
+		close(workers[i].socket);
 	return 0;
 }
 

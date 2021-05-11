@@ -22,14 +22,22 @@
                 exit(EXIT_FAILURE); \
             }} while(0);
 
-const int port_id = 8321;
 
-/*
-int main() {
-    printf("%f\n", exp(0));
-    return 0;
-}
-*/
+#define MAX(first, second) \
+		((first > second)? first : second)
+
+typedef struct{
+	double a;
+	double b;
+	double result;
+	int proc_number;
+} mission_t;
+
+const int    port_id = 8321;
+const double step 	 = 1./100000000;
+
+void *pthread_function(void * arg);
+double func(double x);
 int takenumber (char * str);
 
 int main(int argc, char ** argv) {
@@ -78,18 +86,16 @@ int main(int argc, char ** argv) {
         .sin_port	= htons(port_id),
         .sin_addr	= ((struct sockaddr_in *) &addr1) -> sin_addr
     };
- /*   //*------------------------------------------------------------------------------------------------------------
+ /*
     ret = setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
 	CHECK_ERROR(ret, "setsockopt fail");
 */
     ret = connect (sk, (struct sockaddr*) &addr, sizeof(addr));
     CHECK_ERROR(ret, "connect fail");
-
-    char buf[16];
-    read(sk, buf, 16);
-    printf("%s\n", buf);
-
-    write(sk, "answer delivered", 17);
+//**********************************************************************************************************
+    ret = write(sk, &input, sizeof(int));
+    CHECK_ERROR(ret, "write fail");
+    
 
     close(sk);
 	return 0;
@@ -114,4 +120,32 @@ int takenumber (char * str)
 	}
 
 	return input;
+}
+
+void *pthread_function(void * arg)
+{
+	mission_t * mission = (mission_t * ) arg;
+
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+
+	CPU_SET(mission -> proc_number, &cpuset);
+
+	int err = pthread_setaffinity_np( pthread_self(), sizeof(cpuset), &cpuset);
+	check_error(err, "pthread_setaffinity_np");
+
+	double x = mission -> a;
+	double end = mission -> b;
+
+	while ( x < end ){
+		mission-> result += func( x ) * step;
+		x += step;
+	}
+ 
+	return 0;
+}
+
+double func(double x)
+{
+	return exp (-x * x);
 }
