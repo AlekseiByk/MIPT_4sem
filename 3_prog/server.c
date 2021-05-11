@@ -108,7 +108,15 @@ int main(int argc, char ** argv) {
 	}
 	printf("threads num = %d\n", threads_sum);
 
+	double left_lim_temp = left_lim;
 
+	for (int i = 0; i < input; i++){
+		write(workers[i].socket, &left_lim_temp, sizeof(int));
+		left_lim_temp += ((double) (right_lim - left_lim)) / thread_sum * workers[i].thread_num;
+		write(workers[i].socket, &left_lim_temp, sizeof(int));
+	}
+
+	for(int i = 0; i < input; i++)
 
 	free(workers);
 	close(sk);

@@ -98,8 +98,66 @@ int main(int argc, char ** argv) {
 //**********************************************************************************************************
     ret = write(sk, &input, sizeof(int));
     CHECK_ERROR(ret, "write fail");
-    
 
+	FILE* fin = fopen ("/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size", "r");
+	if (!fin){
+		fprintf(stderr, "error while fopen cache file\n");
+		exit(EXIT_FAILURE);
+	}
+
+	int proc_number = get_nprocs();
+	number_of_proc = MAX(proc_number, input);
+	int cache_size = 0;
+	fscanf(fin, "%d", &cache_size);
+	fclose (fin);
+
+	pthread_t * threads = (pthread_t *) calloc(number_of_proc, sizeof(threads[0]));
+	mission_t ** pthreads_info = (mission_t **) calloc ( number_of_proc, sizeof(pthreads_info[0])); 
+
+	double left_lim = 0;
+	double right_lim = 0;
+	read(sk, &left_lim, sizeof(double));
+	read(sk, &right_lim, sizeof(double));
+
+	for (int i = 0; i < number_of_proc; i++){
+
+		pthreads_info[i] = (mission_t *) memalign (cache_size, sizeof(mission_t) );
+
+		pthreads_info[i] -> a = left_lim + ((double) (right_lim - left_lim)) / input * (i % input);
+		pthreads_info[i] -> b = (pthreads_info[i] -> a) + ((double) (right_lim - left_lim)) / input;
+		pthreads_info[i] -> proc_number = i % proc_number;
+		pthreads_info[i] -> result = 0;
+		//printf ("%f %f %10f %f\n", pthreads_info[i] -> a, pthreads_info[i] -> b, pthreads_info[i] -> step, pthreads_info[i] -> result);
+	}
+
+	for (int i = 0; i < number_of_proc ; i++){
+
+		err = pthread_create(&(threads[i]), NULL, pthread_function,(void*) pthreads_info[i]);
+		check_error(err, "pthread_create");
+	}
+
+	for (int i = 0; i < number_of_proc; i++){
+
+		pthread_join(threads[i], NULL);
+		check_error(err, "pthread_join");
+	}
+
+	double self_result = 0;
+
+	for (int i = 0; i < input; i++){
+		self_result += pthreads_info[i] -> result;
+	}
+
+	printf("colculations complete");
+
+	ret = write(sk, &self_result, sizeof(double));
+	CHECK_ERROR(ret, "write error)");
+
+	for (int i = 0; i < number_of_proc; i++){
+		free(pthreads_info[i]);
+	}
+	free(pthreads_info);
+	free (threads);
     close(sk);
 	return 0;
 }
@@ -144,7 +202,7 @@ void *pthread_function(void * arg)
 		mission-> result += func( x ) * step;
 		x += step;
 	}
- 
+
 	return 0;
 }
 
