@@ -52,6 +52,7 @@ const int 	 timewait  = 40;
 int takenumber (char * str);			//take number from comand line
 int test_connection();					//test for local connection
 int select_socket(int socket, int sec);	//time select for 40 sec and check inet connection
+void enable_keepalive(int sock);
 
 int main(int argc, char ** argv) {
 
@@ -121,6 +122,7 @@ int main(int argc, char ** argv) {
 
 		workers[i].socket = accept(sk, (struct sockaddr*) &addr, &size); //, SOCK_NONBLOCK
 		CHECK_ERROR(workers[i].socket, "accept error");
+		enable_keepalive(workers[i].socket);
 	}
 
 	//--------------------------------------------------------------------------------------all sockets connected//---> calculate limits for each worker
@@ -145,23 +147,22 @@ int main(int argc, char ** argv) {
 	double result = 0;
 
 	for(int i = 0; i < input; i++){			//wait result messege from workers
-		ret = select_socket(workers[i].socket, timewait);
+	/*	ret = select_socket(workers[i].socket, timewait);
 		if (ret != SUCCESS){
 			free(workers);
 			close(sk);
 			for (int i = 0; i < input; i++)
 				close(workers[i].socket);
 			
-			if (ret == NO_INET)
-				printf("NO INTERNET CONNECTION\n");
-			else
+			if (ret == TIMEOUT)
 				printf("timeout for answer\n");
 
 			exit(EXIT_FAILURE);
-		}
+		}*/
 
 		double worker_result = 0;
 		ret = read(workers[i].socket, &worker_result, sizeof(double));
+		CHECK_ERROR(ret, "read error");
 		if (ret == 0){
 			free(workers);
 			close(sk);
@@ -235,16 +236,31 @@ int select_socket(int socket, int sec){
 		timeout.tv_sec = 5;
 		ret = select(socket + 1, &fdset, NULL, NULL, &timeout);
 		CHECK_ERROR(ret, "select");
-		if (ret == 0){
-			ret = test_connection();
-			if (ret == -1)
-				return NO_INET;
-		}
-		else
+		if (ret != 0)
 				break;
 	}
 	if (ret == 0)
 		return TIMEOUT;
 
 	return SUCCESS;
+}
+
+void enable_keepalive(int sock) {
+    int yes = 1;
+    int ret = setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(int));
+    CHECK_ERROR(ret, "setsockopt SO_KEEPALIVE");
+
+    int idle = 1;
+    ret = setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int));
+    CHECK_ERROR(ret, "setsockopt TCP_KEEPIDLE");
+
+    int interval = 1;
+   	ret = setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(int));
+   	CHECK_ERROR(ret, "setsockopt TCP_KEEPINTVL");
+
+    int maxpkt = 10;
+    ret = setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &maxpkt, sizeof(int));
+    CHECK_ERROR(ret, "setsockopt TCP_KEEPCNT");
+
+    return;
 }
