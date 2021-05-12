@@ -122,12 +122,10 @@ int main(int argc, char ** argv) {
 	for (int i = 0; i < number_of_proc; i++){
 
 		pthreads_info[i] = (mission_t *) memalign (cache_size, sizeof(mission_t) );
-
 		pthreads_info[i] -> a = left_lim + ((double) (right_lim - left_lim)) / input * (i % input);
 		pthreads_info[i] -> b = (pthreads_info[i] -> a) + ((double) (right_lim - left_lim)) / input;
 		pthreads_info[i] -> proc_number = i % proc_number;
 		pthreads_info[i] -> result = 0;
-		//printf ("%f %f %10f %f\n", pthreads_info[i] -> a, pthreads_info[i] -> b, pthreads_info[i] -> step, pthreads_info[i] -> result);
 	}
 
 	for (int i = 0; i < number_of_proc ; i++){
@@ -148,7 +146,7 @@ int main(int argc, char ** argv) {
 		self_result += pthreads_info[i] -> result;
 	}
 
-	printf("colculations complete");
+	printf("colculations complete\n");
 
 	ret = write(sk, &self_result, sizeof(double));
 	CHECK_ERROR(ret, "write error)");
