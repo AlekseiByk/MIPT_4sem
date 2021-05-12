@@ -266,6 +266,8 @@ int RB_delete(rb_tree_t* tree, int key)
     else
     {
         old = take_min_node(tree, node->right);
+        if (old == NULL)
+            return ERROR;
 
         old_orig_color =  old->color;
         replaced = old->right;
@@ -319,7 +321,7 @@ static int node_delete(rb_node_t* node)
     node->key = Poison_key;
 
     free(node);
-
+    node = NULL;
     return 0;
 }
 
