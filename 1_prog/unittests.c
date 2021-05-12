@@ -333,14 +333,22 @@ void Testcase_delete_and_fixup()
     int ret_del_right = RB_delete(tree, 11);
     UNITTEST(ret_del_right, ==, 0);
 
-    int arr_nums4[16] = {10, 5, 14, 11, 12, 7, 19, 24, 20, 42, 15, 18, 16, 17};
+    int arr_nums7[16] = {10, 5, 14, 11, 12, 7, 19, 24, 20, 42, 15, 18, 16, 17};
 
-    for (int i = 13; i > 0; i--)
+    for (int i = 2; i > 0; i--)
     {
-        ret_del_right = RB_delete(tree, arr_nums4[i]);
+        ret_del_right = RB_delete(tree, arr_nums7[i]);
         UNITTEST(ret_del_right, ==, 0);
     }
 
+    ret_del_right = RB_delete(tree, arr_nums7[3]);
+    UNITTEST(ret_del_right, ==, BAD_ARGS);
+
+    for (int i = 8; i > 3; i--)
+    {
+        ret_del_right = RB_delete(tree, arr_nums7[i]);
+        UNITTEST(ret_del_right, ==, 0);
+    }
 
     ret_dtor = tree_dtor(tree);
     UNITTEST(ret_dtor, ==, 0);
