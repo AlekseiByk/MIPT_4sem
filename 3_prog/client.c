@@ -146,7 +146,7 @@ int main(int argc, char ** argv) {
 		self_result += pthreads_info[i] -> result;
 	}
 
-	printf("colculations complete\n");
+	printf("calculations complete\n");
 
 	ret = write(sk, &self_result, sizeof(double));
 	CHECK_ERROR(ret, "write error)");

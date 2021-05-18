@@ -332,7 +332,12 @@ int tree_dtor(rb_tree_t* tree)
 
     size_t counter = tree->num_nodes;
 
-    int ret = subtree_distruct(tree->root, tree->nil, &counter);
+    int ret = 0;
+    if (tree->root != NULL && tree->nil != NULL)
+        ret = subtree_distruct(tree->root, tree->nil, &counter);
+    else
+        return BAD_ARGS;
+
     if (ret < 0)
         return ret;
 
@@ -462,7 +467,7 @@ static int delete_fixup(rb_tree_t* tree, rb_node_t* extra_black)
 
 int foreach(rb_tree_t* tree, int (*func)(int, void*), void* data)
 {
-    if (tree == NULL || func == NULL)
+    if (tree == NULL || func == NULL || data == NULL)
         return BAD_ARGS;
 
     int ret = call(tree->root, tree, func, data, tree->num_nodes);
@@ -605,13 +610,15 @@ int tree_dump(FILE* out, rb_tree_t* tree)
     if (out == NULL || tree == NULL)
         return BAD_ARGS;
 
-    fprintf(out, "digraph dump\n{\n");
+    int ret = fprintf(out, "digraph dump\n{\n");
+    if (ret < 0)
+        return ERROR;
 
     fprintf(out, "\tnode [color = \"#000000\", shape = \"box\", fontsize = 20];\n"
-                 "\tedge [color = \"#000000\", fontsize = 20];\n\n");
+                        "\tedge [color = \"#000000\", fontsize = 20];\n\n");
 
     fprintf(out, "\t\troot_nil [label = \"root_nil\", shape = \"diamond\","
-                 " color = \"#FFFFFF\", fontcolor = \"#000000\"];\n");
+                        " color = \"#FFFFFF\", fontcolor = \"#000000\"];\n");
 
 
     if (tree->num_nodes == 0)
@@ -621,7 +628,7 @@ int tree_dump(FILE* out, rb_tree_t* tree)
     }
 
     size_t counter = tree->num_nodes;
-    int ret = node_dump(out, tree->root, tree, &counter);
+    ret = node_dump(out, tree->root, tree, &counter);
 
     if (ret != 0)
         return BAD_TREE_CONDITION;

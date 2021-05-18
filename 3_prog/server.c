@@ -160,6 +160,10 @@ int main(int argc, char ** argv) {
 			exit(EXIT_FAILURE);
 		}*/
 
+		FD_ZERO(&fdset);
+		FD_SET(workers[i].socket, &fdset);
+		ret = select(workers[i].socket + 1, &fdset, NULL, NULL, NULL);
+
 		double worker_result = 0;
 		ret = read(workers[i].socket, &worker_result, sizeof(double));
 		CHECK_ERROR(ret, "read error");
