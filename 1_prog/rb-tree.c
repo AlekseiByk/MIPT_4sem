@@ -99,6 +99,8 @@ int RB_insert(rb_tree_t* tree, int key)
     rb_node_t* new_parent = Nil;
 
     rb_node_t* new_node = node_ctor();
+    if (new_node == NULL)
+        return ERROR;
     new_node->key = key;
 
     while(cur_node != Nil)
@@ -333,14 +335,10 @@ int tree_dtor(rb_tree_t* tree)
     size_t counter = tree->num_nodes;
 
     int ret = 0;
-    if (tree->root != NULL && tree->nil != NULL)
-        ret = subtree_distruct(tree->root, tree->nil, &counter);
-    else
-        return BAD_ARGS;
-
+    
+    ret = subtree_distruct(tree->root, tree->nil, &counter);
     if (ret < 0)
         return ret;
-
     ret = node_delete(tree->nil);
 
     tree->root = NULL;
@@ -467,7 +465,7 @@ static int delete_fixup(rb_tree_t* tree, rb_node_t* extra_black)
 
 int foreach(rb_tree_t* tree, int (*func)(int, void*), void* data)
 {
-    if (tree == NULL || func == NULL || data == NULL)
+    if (tree == NULL || func == NULL)
         return BAD_ARGS;
 
     int ret = call(tree->root, tree, func, data, tree->num_nodes);
