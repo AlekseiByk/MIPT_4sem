@@ -116,8 +116,18 @@ int main(int argc, char ** argv) {
 
 	double left_lim = 0;
 	double right_lim = 0;
-	read(sk, &left_lim, sizeof(double));
-	read(sk, &right_lim, sizeof(double));
+	ret = read(sk, &left_lim, sizeof(double));
+	CHECK_ERROR(ret, "read fail");
+	if (ret == 0){
+		printf("wrong read limit\n");
+		exit(EXIT_FAILURE);
+	}
+	ret = read(sk, &right_lim, sizeof(double));
+	CHECK_ERROR(ret, "read fail");
+	if (ret == 0){
+		printf("wrong read limit\n");
+		exit(EXIT_FAILURE);
+	}
 
 	for (int i = 0; i < number_of_proc; i++){
 

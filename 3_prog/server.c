@@ -50,8 +50,6 @@ const int 	 magic     = 0xBEAF;
 const int 	 timewait  = 40;
 
 int takenumber (char * str);			//take number from comand line
-int test_connection();					//test for local connection
-int select_socket(int socket, int sec);	//time select for 40 sec and check inet connection
 void enable_keepalive(int sock);
 
 int main(int argc, char ** argv) {
@@ -119,6 +117,10 @@ int main(int argc, char ** argv) {
 
 		ret = select(sk + 1, &fdset, NULL, NULL, &timeout);
 		CHECK_ERROR(ret, "select");
+		if (ret == 0){
+			printf("timeout\n");
+			exit(EXIT_FAILURE);
+		}
 
 		workers[i].socket = accept(sk, (struct sockaddr*) &addr, &size); //, SOCK_NONBLOCK
 		CHECK_ERROR(workers[i].socket, "accept error");
@@ -146,23 +148,7 @@ int main(int argc, char ** argv) {
 
 	double result = 0;
 
-	for(int i = 0; i < input; i++){			//wait result messege from workers
-	/*	ret = select_socket(workers[i].socket, timewait);
-		if (ret != SUCCESS){
-			free(workers);
-			close(sk);
-			for (int i = 0; i < input; i++)
-				close(workers[i].socket);
-			
-			if (ret == TIMEOUT)
-				printf("timeout for answer\n");
-
-			exit(EXIT_FAILURE);
-		}*/
-
-		FD_ZERO(&fdset);
-		FD_SET(workers[i].socket, &fdset);
-		ret = select(workers[i].socket + 1, &fdset, NULL, NULL, NULL);
+	for(int i = 0; i < input; i++){
 
 		double worker_result = 0;
 		ret = read(workers[i].socket, &worker_result, sizeof(double));
@@ -209,44 +195,6 @@ int takenumber (char * str)
 	}
 
 	return input;
-}
-
-
-
-int test_connection(){
-	struct ifaddrs *ifap, *ifa;
-
-    getifaddrs(&ifap);
-
-    for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
-		if ((ifa -> ifa_addr -> sa_family == AF_INET) && (((struct sockaddr_in*)(ifa -> ifa_addr)) -> sin_addr.s_addr != 0x100007f)){
-			freeifaddrs(ifap);
-			return 0;
-		}
-    }
-    freeifaddrs(ifap);
-	return -1;
-}
-
-int select_socket(int socket, int sec){
-	struct timeval timeout = {
-		.tv_usec = 0
-	};
-	fd_set fdset;
-	int ret = 0;
-	for (int count = 0; count < sec / 5; count++){
-		FD_ZERO(&fdset);
-		FD_SET(socket, &fdset);
-		timeout.tv_sec = 5;
-		ret = select(socket + 1, &fdset, NULL, NULL, &timeout);
-		CHECK_ERROR(ret, "select");
-		if (ret != 0)
-				break;
-	}
-	if (ret == 0)
-		return TIMEOUT;
-
-	return SUCCESS;
 }
 
 void enable_keepalive(int sock) {
